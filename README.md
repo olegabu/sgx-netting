@@ -26,11 +26,13 @@ party's public key it has saved with the inputs and returns encrypted results. T
 [Java code](doc/SemiLocalCompressionAlgorithm.java) as reference. 
 *Deliverables*: a compiled library with the implementation, an executable to run it, unit tests. Input to the library: a 
 matrix of payments in clear text. Output: matrix of the results in clear text.
-1. put the library into the enclave to run the algo.
+1. put the library into the enclave to run the algo
 *Deliverables*: an executable that establishes an enclave and runs the algo from the library. Input and outputs are 
-still clear text.
+still clear text
 1. create a service that receives encrypted input as rows to the matrix one by one, calculates once it's received all
-   inputs and makes results available for the parties to query.
-*Deliverables*: an executable with an http endpoint to receive inputs and respond to queries for results
+   inputs and outputs encrypted results.
+*Deliverables*: an executable that takes inputs as files of one dimensional arrays of numbers representing a row in the
+ input matrix plus a public key; outputs are files with arrays of resulting numbers encrypted by the party's public key
+1. http or grpc endpoint to receive inputs and respond to queries for results
 1. add remote attestation query endpoint
 1. put in a docker container 
