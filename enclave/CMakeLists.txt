@@ -35,7 +35,7 @@ add_library(enclave SHARED
         semi_local_compress.cpp)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SGX_COMMON_CFLAGS} -nostdinc -fvisibility=hidden -fpie -fstack-protector")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_C_FLAGS} -nostdinc++ -std=c++03 -DENCLAVE")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_C_FLAGS} -nostdinc++ -DENCLAVE")
 
 target_link_libraries(enclave PRIVATE "${SGX_COMMON_CFLAGS}\
     -Wl,--no-undefined -nostdlib -nodefaultlibs -Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -L${SGX_LIBRARY_PATH} \
@@ -54,6 +54,6 @@ add_custom_command(TARGET enclave
         -key enclave_private.pem
         -config enclave.config.xml
         -enclave $<TARGET_FILE:enclave>
-        -out ${CMAKE_CURRENT_SOURCE_DIR}/../app/enclave.so
+        -out ${CMAKE_BINARY_DIR}/bin/enclave.so
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "Signing the enclave => ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/enclave.signed.so")
