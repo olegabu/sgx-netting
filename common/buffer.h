@@ -32,6 +32,7 @@ public:
     }
 
     buffer& operator << (const string& rhs) {
+        put_i4(rhs.size());
         m_data.insert(m_data.end(), rhs.begin(), rhs.end());
         return *this;
     }
