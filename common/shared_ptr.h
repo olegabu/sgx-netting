@@ -27,21 +27,21 @@ private:
 public:
     shared_ptr():ptr(0),ref(0){}
     shared_ptr(T* x):ptr(x),ref(new int(1)){
-        printf("%p new ptr %p\n", this, ptr);
+        //printf("%p new ptr %p\n", this, ptr);
     }
     shared_ptr(const shared_ptr<T>& rhs):ptr(rhs.ptr),ref(rhs.ref)
     {
-        printf("%p copy\n", this);
+        //printf("%p copy\n", this);
         if(ptr)
             (*ref)++;
     }
     ~shared_ptr()
     {
-        printf("%p del\n", this);
+        //printf("%p del\n", this);
         release();
     }
     shared_ptr<T>& operator=(const shared_ptr<T>& rhs) {
-        printf("%p op copy\n", this);
+        //printf("%p op copy\n", this);
         if (ptr != rhs.ptr) {
             release();
             ptr = rhs.ptr;
