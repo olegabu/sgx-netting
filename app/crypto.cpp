@@ -15,6 +15,7 @@
 #include <map>
 
 #include <openssl/ec.h>
+#include <openssl/rsa.h>
 #include <openssl/evp.h>
 #include <openssl/engine.h>
 
@@ -25,6 +26,63 @@
 #include <sgx_tcrypto.h>
 
 using namespace std;
+
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+static BIGNUM *BN_lebin2bn(const unsigned char *s, int len, BIGNUM *ret)
+{
+    uint8_t buf[len];
+    memcpy(buf, s, len);
+    reverse(buf, buf+len);
+
+    return BN_bin2bn(buf, len, ret);
+}
+
+static int BN_bn2lebinpad(const BIGNUM *a, unsigned char *to, int tolen)
+{
+    memset(to, 0, tolen);
+    BN_bn2bin(a, to);
+    reverse(to, to+tolen);
+}
+
+
+static int RSA_set0_key(RSA *r, BIGNUM *n, BIGNUM *e, BIGNUM *d)
+{
+    /* If the fields n and e in r are NULL, the corresponding input
+     * parameters MUST be non-NULL for n and e.  d may be
+     * left NULL (in case only the public key is used).
+     */
+    if ((r->n == NULL && n == NULL)
+        || (r->e == NULL && e == NULL))
+        return 0;
+
+    if (n != NULL) {
+        BN_free(r->n);
+        r->n = n;
+    }
+    if (e != NULL) {
+        BN_free(r->e);
+        r->e = e;
+    }
+    if (d != NULL) {
+        BN_free(r->d);
+        r->d = d;
+    }
+
+    return 1;
+}
+
+static void RSA_get0_key(const RSA *r,
+                         const BIGNUM **n, const BIGNUM **e, const BIGNUM **d)
+{
+    if (n != NULL)
+        *n = r->n;
+    if (e != NULL)
+        *e = r->e;
+    if (d != NULL)
+        *d = r->d;
+}
+#endif
 
 EC_KEY* to_ec_key(sgx_ec256_private_t* prv_key)
 {

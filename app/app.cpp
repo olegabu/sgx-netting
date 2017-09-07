@@ -22,9 +22,15 @@
 #include "util.h"
 #include "crypto.h"
 
+#include <openssl/ssl.h>
+
 int main(int argc, char* argv[])
 {
-    OPENSSL_init();
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    SSL_library_init();
+#else
+    OPENSSL_init_ssl(0, NULL);
+#endif
     sgx_status_t ret;
     sgx_enclave_id_t enclave_id;
     int launch_token_update = 0;

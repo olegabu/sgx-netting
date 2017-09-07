@@ -8,7 +8,7 @@ include_directories(
 )
 
 link_directories(.)
-link_libraries(c stdc++ ssl crypto enclave -L${SGX_LIBRARY_PATH} ${SGX_URTS_LIB} ${SGX_USVC_LIB})
+link_libraries(c stdc++ ssl crypto enclave pthread -L${SGX_LIBRARY_PATH} ${SGX_URTS_LIB} ${SGX_USVC_LIB})
 
 add_executable(app
         app.cpp ocall.cpp
