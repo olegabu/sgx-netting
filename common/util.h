@@ -36,6 +36,9 @@ inline void print_raw(const void* data_, uint32_t data_size)
 
 #ifndef ENCLAVE
 #include <iostream>
+
+#include "NotionalMatrix.h"
+
 inline ostream& operator <<(ostream& os, const ClearedTrade& t){
     return os << t.party->scheme << '~' << t.party->value << " "
               << t.counter_party->scheme << '~' << t.counter_party->value << " "
@@ -50,6 +53,9 @@ inline ostream& operator <<(ostream& os, const vector<T>& vec){
     return os;
 }
 
+inline ostream& operator <<(ostream& os, const NotionalMatrix& mat){
+    return os << mat.to_list();
+}
 #include <sstream>
 template<typename Out>
 inline void split(const std::string &s, char delim, Out result) {

@@ -13,7 +13,7 @@ link_libraries(c stdc++ ssl crypto enclave pthread -L${SGX_LIBRARY_PATH} ${SGX_U
 add_executable(app
         app.cpp ocall.cpp
         ../common/serial_trades.cpp ../common/serial_trades.h
-        ../enclave/enclave_u.c ../common/util.h ../common/buffer.h crypto.cpp crypto.h)
+        ../enclave/enclave_u.c ../common/util.h ../common/buffer.h crypto.cpp crypto.h ../common/NotionalMatrix.h)
 
 add_custom_command(TARGET app
         POST_BUILD

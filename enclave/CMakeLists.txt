@@ -27,7 +27,9 @@ include_directories(
 
 add_library(enclave SHARED
         enclave_t.c enclave_u.h
-        ../common/shared_ptr.h ../common/trade.h ../common/serial_trades.h ../common/serial_trades.cpp
+        ../common/shared_ptr.h
+        ../common/trade.h ../common/serial_trades.h ../common/serial_trades.cpp
+        ../common/NotionalMatrix.h
         ../common/SemiLocalAlgorithm.h
         enclave_state.h enclave_state.cpp
         outside.h outside.cpp
