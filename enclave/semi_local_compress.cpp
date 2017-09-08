@@ -13,7 +13,6 @@
 #include "enclave_t.h"
 #include "SemiLocalAlgorithm.h"
 
-
 sgx_status_t
 semi_local_compress(
         uint8_t* e_trades, uint32_t e_trades_size, uint8_t* trades_mac,
@@ -70,6 +69,61 @@ semi_local_compress(
             *e_out_data,
             aes_gcm_iv, 12, NULL, 0,
             (sgx_aes_gcm_128bit_tag_t *)(e_out_mac));
+
+
+    if(ret != SGX_SUCCESS)
+        return ret;
+    return ret;
+}
+
+#include "crypto.h"
+
+sgx_status_t
+semi_local_compress_rsa(
+        uint8_t* e_trades, uint32_t e_trades_size, uint8_t* trades_mac,
+        uint8_t** e_out_data, uint32_t* e_out_data_size, uint8_t* e_out_mac,
+        sgx_rsa3072_public_key_t* pub_key)
+{
+    sgx_status_t ret = SGX_SUCCESS;
+    uint8_t* trade_data = (uint8_t*)malloc(e_trades_size);
+
+    printf("[enclave] e_trades:\n");
+    print_raw(&g_data.key_trades_rsa3072, e_trades_size);
+    print_raw(e_trades, e_trades_size);
+
+    ret = rsa3072_decrypt(&g_data.key_trades_rsa3072,
+        e_trades, e_trades_size, trade_data);
+
+    printf("[enclave] decrypt:\n");
+    if(ret != SGX_SUCCESS)
+        return ret;
+    print_raw(trade_data, e_trades_size);
+    NotionalMatrix mat;
+    vector<ClearedTrade> trades;
+    try {
+        trades = read_trades(trade_data, e_trades_size);
+
+        mat.add(trades);
+    } catch (exception& e) {
+        printf(e.what());
+    }
+
+    printf("n_trades: %d %d\n", trades.size(), mat.n_trade_pairs());
+
+    SemiLocalAlgorithm algo;
+
+    NotionalMatrix newmat = algo.compress(mat);
+
+    vector<ClearedTrade> newtrades = newmat.sub(mat);
+    buffer buf = write_trades(newtrades);
+
+    *e_out_data_size = 384;
+    *e_out_data = (uint8_t*)out_malloc(384);
+
+    print_raw(pub_key->exp, 4);
+    ret = rsa3072_encrypt(
+            pub_key, buf.data(), buf.size(), *e_out_data
+    );
 
 
     if(ret != SGX_SUCCESS)

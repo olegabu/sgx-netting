@@ -12,7 +12,7 @@ include (cmake/ConfigSGX.cmake)
 
 set(CMAKE_CXX_STANDARD 11)
 
-include_directories(app enclave common)
+include_directories(app enclave common include)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)

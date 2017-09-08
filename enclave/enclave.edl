@@ -37,6 +37,8 @@ enclave {
 		public sgx_status_t enclave_init([user_check] uint8_t* e_sealed);
 		public sgx_status_t enclave_close([user_check] uint8_t* e_sealed);
 
+        public sgx_status_t e_rsa3072_getPub([user_check] sgx_rsa3072_public_key_t* pub_key,
+                                            [user_check] sgx_rsa3072_private_key_t* prv_key);
         public sgx_status_t e_get_pub_key([user_check] sgx_ec256_public_t* pub_key);
         public sgx_status_t e_exchange_keys([user_check] sgx_ec256_public_t* client_pub_key_in,
                                             [user_check] sgx_ec256_public_t* enclave_pub_key_out);
@@ -50,6 +52,14 @@ enclave {
                                                 [out,isptr] uint8_t** e_out_data,
                                                 [in,out,size=4] uint32_t* e_out_data_size,
                                                 [out,size=16] uint8_t* e_out_mac);
+
+        public sgx_status_t semi_local_compress_rsa([in,size=e_trades_size] uint8_t* e_trades,
+                                                uint32_t e_trades_size,
+                                                [in,size=16] uint8_t* trades_mac,
+                                                [out,isptr] uint8_t** e_out_data,
+                                                [in,out,size=4] uint32_t* e_out_data_size,
+                                                [out,size=16] uint8_t* e_out_mac,
+                                                [user_check] sgx_rsa3072_public_key_t* pub_key);
     };
 
     untrusted {

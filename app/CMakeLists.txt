@@ -2,13 +2,14 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SGX_COMMON_CFLAGS} -fPIC -Wno-attributes")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_C_FLAGS}")
 
 include_directories(
+        /usr/include/openssl-1.0/
         $(CMAKE_CURRENT_SOURCE_DIR)
         ${SGX_SDK}/include
         .
 )
 
 link_directories(.)
-link_libraries(c stdc++ ssl crypto enclave pthread -L${SGX_LIBRARY_PATH} ${SGX_URTS_LIB} ${SGX_USVC_LIB})
+link_libraries(c stdc++ ssl crypto enclave pthread -L/usr/lib/openssl-1.0 -L${SGX_LIBRARY_PATH} ${SGX_URTS_LIB} ${SGX_USVC_LIB})
 
 add_executable(app
         app.cpp ocall.cpp

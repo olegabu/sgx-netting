@@ -24,9 +24,9 @@
 #include <cstring>
 #include <exception>
 #include <sgx_tcrypto.h>
+#include <cassert>
 
 using namespace std;
-
 
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 static BIGNUM *BN_lebin2bn(const unsigned char *s, int len, BIGNUM *ret)
@@ -42,7 +42,9 @@ static int BN_bn2lebinpad(const BIGNUM *a, unsigned char *to, int tolen)
 {
     memset(to, 0, tolen);
     BN_bn2bin(a, to);
-    reverse(to, to+tolen);
+    if(tolen > 4)
+        reverse(to, to+tolen);
+    return tolen;
 }
 
 
@@ -249,4 +251,82 @@ bool check_point(sgx_ec256_public_t* pub_key) {
     BIGNUM *bn_pub_y = BN_lebin2bn(pub_key->gy, 32, 0);
 
     return 1 == EC_POINT_set_affine_coordinates_GFp(curve, pub, bn_pub_x, bn_pub_y, ctx);
+}
+#define SSL_CHECK(call) if(-1 == (call)) { \
+    ERR_print_errors_fp(stdout);    \
+    throw runtime_error("Crap");    \
+    }
+
+RSA* to_rsa_ctx( sgx_rsa3072_public_key_t* pub_key )
+{
+    BIGNUM *bn_prv_n = BN_lebin2bn(pub_key->mod, 384, 0);
+    //BIGNUM *bn_prv_e = BN_lebin2bn(pub_key->exp, 4, 0);
+    BIGNUM* bn_prv_e = BN_new();
+    SSL_CHECK(BN_set_word(bn_prv_e, RSA_F4));
+
+    RSA* rsa = RSA_new();
+    SSL_CHECK(RSA_set0_key(rsa, bn_prv_n, bn_prv_e, 0));
+
+    return rsa;
+}
+
+
+RSA* to_rsa_ctx( sgx_rsa3072_private_key_t* prv_key )
+{
+    BIGNUM *bn_prv_n = BN_lebin2bn(prv_key->mod, 384, 0);
+    BIGNUM* bn_e = BN_new();
+    SSL_CHECK(BN_set_word(bn_e, RSA_F4));
+    BIGNUM *bn_prv_d = BN_lebin2bn(prv_key->exp, 384, 0);
+
+    RSA* rsa = RSA_new();
+    SSL_CHECK(RSA_set0_key(rsa, bn_prv_n, bn_e, bn_prv_d));
+
+    return rsa;
+}
+
+void rsa3072_create_key_pair(sgx_rsa3072_private_key_t * p_private, sgx_rsa3072_public_key_t * p_public)
+{
+    RSA* rsa = RSA_new();
+    BIGNUM* bn_e_ = BN_new();
+    SSL_CHECK(BN_set_word(bn_e_, RSA_F4));
+    SSL_CHECK(RSA_generate_key_ex(rsa, 3072, bn_e_, 0));
+
+    BN_free(bn_e_);
+    const BIGNUM* bn_n;
+    const BIGNUM* bn_e;
+    const BIGNUM* bn_d;
+
+    RSA_get0_key(rsa, &bn_n, &bn_e, &bn_d);
+
+    BN_bn2lebinpad(bn_n, (uint8_t*)p_private->mod, 384);
+    BN_bn2lebinpad(bn_n, (uint8_t*)p_public->mod, 384);
+    BN_bn2lebinpad(bn_e, (uint8_t*)p_public->exp, 4);
+    BN_bn2lebinpad(bn_d, (uint8_t*)p_private->exp, 384);
+
+    RSA_free(rsa);
+}
+
+void rsa3072_encrypt(sgx_rsa3072_public_key_t* pub_key, const uint8_t *data, uint32_t data_size, uint8_t *out_data, uint32_t* out_size) {
+    RSA* rsa = to_rsa_ctx(pub_key);
+
+    //SSL_CHECK(RSA_check_key(rsa) - 1);
+
+    int ret = RSA_public_encrypt(data_size, data, out_data, rsa, RSA_PKCS1_PADDING);
+
+    SSL_CHECK(ret);
+
+    *out_size = ret;
+
+    //reverse(out_data, out_data+data_size);
+    RSA_free(rsa);
+}
+
+void rsa3072_decrypt(sgx_rsa3072_private_key_t* prv_key, const uint8_t *data, uint32_t data_size, uint8_t *out_data) {
+    RSA* rsa = to_rsa_ctx(prv_key);
+
+    //SSL_CHECK(RSA_check_key(rsa) - 1);
+
+    SSL_CHECK(RSA_private_decrypt(data_size, data, out_data, rsa, RSA_PKCS1_PADDING));
+
+    RSA_free(rsa);
 }

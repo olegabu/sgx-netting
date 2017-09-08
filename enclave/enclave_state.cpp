@@ -7,6 +7,9 @@
 
 #include <sgx_tseal.h>
 #include <sgx_trts.h>
+#include <util.h>
+
+#include "crypto.h"
 
 GState g_state = NONE;
 GData  g_data = {0};
@@ -23,6 +26,13 @@ sgx_status_t enclave_init(uint8_t* e_sealed) {
             return ret;
 
         sgx_ecc256_close_context(ecc);
+
+        ret = rsa3072_create_key_pair(&g_data.key_trades_rsa3072, &g_data.pub_key_trades_rsa3072);
+        if(ret != SGX_SUCCESS)
+            return ret;
+
+        //print_raw(&g_data.pub_key_trades_rsa3072, sizeof(sgx_rsa3072_public_key_t));
+
         g_state = INIT;
         return SGX_SUCCESS;
     }

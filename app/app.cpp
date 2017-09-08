@@ -183,3 +183,106 @@ int main(int argc, char* argv[])
     printf("\n--- EC256 CODE ---\n");
     algo_ec256(enclave_id, buf);
 }
+
+#define SGX_CHECK \
+    if(sret != SGX_SUCCESS || ret != SGX_SUCCESS) { \
+        printf("\nError at %d, %d, %d." , __LINE__, sret, (int32_t)ret);\
+        return -1;\
+    }
+
+int algo_rsa3072(sgx_enclave_id_t enclave_id, buffer& trade_data) {
+    sgx_status_t sret, ret;
+    sgx_rsa3072_private_key_t prv_key;
+    sgx_rsa3072_public_key_t pub_key;
+    sgx_rsa3072_public_key_t e_pub_key;
+    sgx_rsa3072_private_key_t e_prv_key;
+    rsa3072_create_key_pair(&prv_key, &pub_key);
+
+    sret = e_rsa3072_getPub(enclave_id, &ret, &e_pub_key, &e_prv_key);
+    SGX_CHECK
+
+    cout << "e: " << *(uint32_t*)e_pub_key.exp << endl;
+    //print_raw(e_pub_key.mod, 384);
+    //print_raw(e_prv_key.exp,384);
+    uint8_t* enc_trades = (uint8_t*)malloc(1024);
+    uint32_t enc_size = 0;
+    memset(enc_trades, 0, 1024);
+
+    rsa3072_encrypt(&e_pub_key, trade_data.data(), trade_data.size(), enc_trades, &enc_size);
+    print_raw(enc_trades, enc_size);
+
+    //reverse(enc_trades, enc_trades+enc_size);
+
+    uint8_t* new_trades = (uint8_t*)malloc(1024);
+    rsa3072_decrypt(&e_prv_key, enc_trades, enc_size, new_trades);
+    print_raw(new_trades, enc_size);
+    uint32_t new_trades_n = 0;
+    uint8_t new_mac[16];
+
+    sret = semi_local_compress_rsa(enclave_id, &ret,
+                               enc_trades, enc_size, 0,
+                               &new_trades, &new_trades_n, 0, &pub_key);
+    SGX_CHECK
+
+    print_raw(new_trades, new_trades_n);
+
+    uint8_t* dec_new_trades = (uint8_t*) malloc(new_trades_n);
+    rsa3072_decrypt(&prv_key, new_trades, new_trades_n, dec_new_trades);
+
+    vector<ClearedTrade> n_trades = read_trades(dec_new_trades,new_trades_n);
+
+    cout << n_trades << endl;
+}
+int main(int argc, char* argv[])
+{
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    SSL_library_init();
+    OpenSSL_add_ssl_algorithms();
+    OPENSSL_add_all_algorithms_noconf();
+    SSL_load_error_strings();
+    ERR_load_CRYPTO_strings();
+#else
+    OPENSSL_init_ssl(0, NULL);
+#endif
+    sgx_status_t ret;
+    sgx_enclave_id_t enclave_id;
+    int launch_token_update = 0;
+    sgx_launch_token_t launch_token = {0};
+    ret = sgx_create_enclave("enclave.so",
+                             SGX_DEBUG_FLAG,
+                             &launch_token,
+                             &launch_token_update,
+                             &enclave_id, NULL);
+    if(SGX_SUCCESS != ret)
+    {
+        printf("\nError, call sgx_create_enclave fail [%d].", ret);
+        return -1;
+    }
+
+    sgx_status_t sret;
+    sret = enclave_init(enclave_id, &ret, 0);
+    if(sret != SGX_SUCCESS || ret != SGX_SUCCESS) {
+        printf("\nError at %d, %d, 0x%x." , __LINE__, sret, ret);
+        return -1;
+    }
+
+    vector<ClearedTrade> trades = load_trades();
+
+    NotionalMatrix mat;
+    mat.add(trades);
+    printf("n_trades: %d %d\n", trades.size(), mat.n_trade_pairs());
+    SemiLocalAlgorithm algo;
+    NotionalMatrix newmat = algo.compress(mat);
+
+    cout << newmat.sub(mat) << endl;
+    buffer buf = write_trades(trades);
+
+    printf("Serialized trade data:\n");
+    print_raw(buf.data(), buf.size());
+
+    printf("--- EC256 CODE ---\n");
+    algo_ec256(enclave_id, buf);
+    printf("--- RSA3072 CODE ---\n");
+    algo_rsa3072(enclave_id, buf);
+
+}
