@@ -50,9 +50,9 @@ sgx_status_t e_exchange_keys(sgx_ec256_public_t* client_pub_key_in,
     if(ret != SGX_SUCCESS)
         return ret;
 
-    print_key("en key:", (uint8_t*)&g_data.key_trades);
-    print_key("en pub:", (uint8_t*)client_pub_key_in);
-    print_key("en secret:", (uint8_t*)&g_data.sk_key);
+//    print_key("en key:", (uint8_t*)&g_data.key_trades);
+//    print_key("en pub:", (uint8_t*)client_pub_key_in);
+//    print_key("en secret:", (uint8_t*)&g_data.sk_key);
     return SGX_SUCCESS;
 }
 sgx_status_t e_encrypt_trades(uint8_t* trades, uint32_t trades_size,

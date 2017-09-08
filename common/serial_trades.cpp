@@ -62,7 +62,6 @@ vector<ClearedTrade> read_trades(uint8_t *trade_data, uint32_t trades_size) {
     uint8_t* end = trade_data + trades_size;
 
     uint32_t n_standardIds = read_i4(r, end);
-    printf("nsids %d", n_standardIds);
 
     vector<shared_ptr<StandardId>> sids;
     for(int i=0;i < n_standardIds; i++) {
@@ -71,7 +70,6 @@ vector<ClearedTrade> read_trades(uint8_t *trade_data, uint32_t trades_size) {
         sid->value = read_str(r, end);
         sids.push_back( sid );
     }
-    printf("nsids %d", sids.size());
 
     uint32_t n_trades = read_i4(r, end);
     vector<ClearedTrade>  trades;

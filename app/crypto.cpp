@@ -145,10 +145,6 @@ void gen_key(sgx_ec256_private_t* prv_key, sgx_ec256_public_t* pub_key) {
         throw runtime_error("Crap");
     }
 
-    cout << BN_bn2dec(prv) << endl;
-    cout << BN_bn2dec(pub_x) << endl;
-    cout << BN_bn2dec(pub_y) << endl;
-
     BN_bn2lebinpad(prv, (uint8_t*)prv_key, 32);
     BN_bn2lebinpad(pub_x, (uint8_t*)pub_key->gx, 32);
     BN_bn2lebinpad(pub_y, (uint8_t*)pub_key->gy, 32);
@@ -192,7 +188,7 @@ void decrypt(uint8_t* key, uint8_t* data, uint32_t data_size, uint8_t* mac, uint
     EVP_DecryptUpdate(ctx, out_data, &n_processed, data,
                       data_size);
 
-// authentication step
+    // authentication step
     if(1 != EVP_DecryptFinal(ctx, out_data+n_processed, &n_processed))
     {
         ERR_print_errors_fp(stdout);
@@ -251,9 +247,6 @@ bool check_point(sgx_ec256_public_t* pub_key) {
 
     BIGNUM *bn_pub_x = BN_lebin2bn(pub_key->gx, 32, 0);
     BIGNUM *bn_pub_y = BN_lebin2bn(pub_key->gy, 32, 0);
-
-    cout << BN_bn2dec(bn_pub_x) << endl;
-    cout << BN_bn2dec(bn_pub_y) << endl;
 
     return 1 == EC_POINT_set_affine_coordinates_GFp(curve, pub, bn_pub_x, bn_pub_y, ctx);
 }

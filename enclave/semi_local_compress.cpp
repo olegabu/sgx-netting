@@ -36,33 +36,29 @@ semi_local_compress(
             aes_gcm_iv, 12, NULL, 0,
             (const sgx_aes_gcm_128bit_tag_t *)(trades_mac));
 
-    printf("decrypt: %s\n", trade_data);
+    printf("[enclave] decrypted:\n");
     if(ret != SGX_SUCCESS)
         return ret;
     print_raw(trade_data, e_trades_size);
-    printf("test0\n");
 
-    printf("test1\n");
     NotionalMatrix mat;
     vector<ClearedTrade> trades;
     try {
         trades = read_trades(trade_data, e_trades_size);
 
-        printf("test2\n");
         mat.add(trades);
     } catch (exception& e) {
         printf(e.what());
     }
 
-    printf("n_trades: %d %d\n", trades.size(), mat.n_trade_pairs());
+    printf("\n[enclave] n_trades: %d %d\n", trades.size(), mat.n_trade_pairs());
+
 
     SemiLocalAlgorithm algo;
 
-    printf("prealgo\n");
     NotionalMatrix newmat = algo.compress(mat);
-    printf("algo\n");
 
-    vector<ClearedTrade> newtrades = newmat.sub(mat);
+    vector<ClearedTrade> newtrades = newmat.to_list();
     buffer buf = write_trades(newtrades);
 
     *e_out_data_size = buf.size();
