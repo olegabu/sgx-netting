@@ -16,48 +16,19 @@
 #include <sgx_urts.h>
 #include <iostream>
 #include <cstring>
+#include <openssl/ssl.h>
+#include <algorithm>
 
 #include "enclave_u.h"
 #include "SemiLocalAlgorithm.h"
 #include "util.h"
 #include "crypto.h"
 
-#include <openssl/ssl.h>
-
-int main(int argc, char* argv[])
-{
-#if OPENSSL_VERSION_NUMBER < 0x10100000L
-    SSL_library_init();
-#else
-    OPENSSL_init_ssl(0, NULL);
-#endif
-    sgx_status_t ret;
-    sgx_enclave_id_t enclave_id;
-    int launch_token_update = 0;
-    sgx_launch_token_t launch_token = {0};
-    ret = sgx_create_enclave("enclave.so",
-                             SGX_DEBUG_FLAG,
-                             &launch_token,
-                             &launch_token_update,
-                             &enclave_id, NULL);
-    if(SGX_SUCCESS != ret)
-    {
-        printf("\nError, call sgx_create_enclave fail [%d].", ret);
-        return -1;
-    }
-
-    sgx_status_t sret;
-    sret = enclave_init(enclave_id, &ret, 0);
-    if(sret != SGX_SUCCESS || ret != SGX_SUCCESS) {
-        printf("\nError at %d, %d, 0x%x." , __LINE__, sret, ret);
-        return -1;
-    }
-
+vector<ClearedTrade> load_trades() {
     FILE* trades_f = fopen("trades.txt","rw");
 
     if(!trades_f) {
-        printf("Failed to open trades.txt");
-        return -1;
+        throw runtime_error("Failed to open trades.txt");
     }
     vector<ClearedTrade> trades;
     map<string, shared_ptr<StandardId>> ps_to_p;
@@ -69,7 +40,7 @@ int main(int argc, char* argv[])
         char line[128];
         fgets(line,128,trades_f);
         int r = sscanf(line, "%s %s %ld n",
-            sid1,sid2, &value);
+                       sid1,sid2, &value);
         if(r < 3)
             break;
 
@@ -100,20 +71,13 @@ int main(int argc, char* argv[])
 
         trades.push_back(t);
     }
+    fclose(trades_f);
 
-    NotionalMatrix mat;
-    mat.add(trades);
-    printf("n_trades: %d %d\n", trades.size(), mat.n_trade_pairs());
-    SemiLocalAlgorithm algo;
-    NotionalMatrix newmat = algo.compress(mat);
+    return trades;
+}
 
-    cout << newmat.sub(mat) << endl;
-    buffer buf = write_trades(trades);
-
-    print_raw(buf.data(), buf.size());
-
-    uint8_t* enc_trades = (uint8_t*)malloc(buf.size());
-
+int algo_ec256(sgx_enclave_id_t enclave_id, buffer& trade_data) {
+    sgx_status_t sret, ret;
     sgx_ec256_private_t prv_key;
     sgx_ec256_public_t pub_key;
     sgx_ec256_public_t e_pub_key;
@@ -125,28 +89,25 @@ int main(int argc, char* argv[])
     //assert(check_point(&pub_key));
 
     sret = e_exchange_keys(enclave_id, &ret, &pub_key, &e_pub_key);
-    //sret = e_encrypt_trades(enclave_id, &ret, (uint8_t*)buf.data(), buf.size(), enc_trades, t_mac);
-
     assert(check_point(&e_pub_key));
     if(sret != SGX_SUCCESS || ret != SGX_SUCCESS) {
         printf("\nError at %d, %d, %d." , __LINE__, sret, (int32_t)ret);
         return -1;
     }
+    uint8_t* enc_trades = (uint8_t*)malloc(trade_data.size());
 
     uint8_t* secret = get_shared_dhkey(&prv_key, &e_pub_key);
     uint8_t t_mac[16];
-    encrypt(secret, buf.data(), buf.size(), enc_trades, t_mac);
+    encrypt(secret, trade_data.data(), trade_data.size(), enc_trades, t_mac);
 
     uint8_t* new_trades = 0;
     uint32_t new_trades_n = 0;
     uint8_t new_mac[16];
     //uint8_t pub_key[16];
 
-
-
     sret = semi_local_compress(enclave_id, &ret,
-        enc_trades, buf.size(), t_mac,
-        &new_trades, &new_trades_n, new_mac);
+                               enc_trades, trade_data.size(), t_mac,
+                               &new_trades, &new_trades_n, new_mac);
 
     if(sret != SGX_SUCCESS || ret != SGX_SUCCESS) {
         printf("\nError, %d, %d.", sret, ret);
@@ -156,7 +117,69 @@ int main(int argc, char* argv[])
     uint8_t* dec_new_trades = (uint8_t*) malloc(new_trades_n);
     decrypt(secret, new_trades, new_trades_n, new_mac, dec_new_trades);
 
-    vector<ClearedTrade> n_trades = read_trades(dec_new_trades,new_trades_n);
+    vector<ClearedTrade> new_trades_list = read_trades(dec_new_trades,new_trades_n);
 
-    cout << n_trades << endl;
+    cout << "\n[app] Compressed notional matrix:\n";
+    cout << new_trades_list << endl;
+}
+
+#define SGX_CHECK \
+    if(sret != SGX_SUCCESS || ret != SGX_SUCCESS) { \
+        printf("\nError at %d, %d, %d." , __LINE__, sret, (int32_t)ret);\
+        return -1;\
+    }
+
+int main(int argc, char* argv[])
+{
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    SSL_library_init();
+    OpenSSL_add_ssl_algorithms();
+    OPENSSL_add_all_algorithms_noconf();
+    SSL_load_error_strings();
+    ERR_load_CRYPTO_strings();
+#else
+    OPENSSL_init_ssl(0, NULL);
+#endif
+    sgx_status_t ret;
+    sgx_enclave_id_t enclave_id;
+    int launch_token_update = 0;
+    sgx_launch_token_t launch_token = {0};
+    ret = sgx_create_enclave("enclave.so",
+                             SGX_DEBUG_FLAG,
+                             &launch_token,
+                             &launch_token_update,
+                             &enclave_id, NULL);
+    if(SGX_SUCCESS != ret)
+    {
+        printf("\nError, call sgx_create_enclave fail [%d].", ret);
+        return -1;
+    }
+
+    sgx_status_t sret;
+    sret = enclave_init(enclave_id, &ret, 0);
+    if(sret != SGX_SUCCESS || ret != SGX_SUCCESS) {
+        printf("\nError at %d, %d, 0x%x." , __LINE__, sret, ret);
+        return -1;
+    }
+
+    vector<ClearedTrade> trades = load_trades();
+
+    NotionalMatrix mat;
+    mat.add(trades);
+    printf("--- Input trades.txt ---\n");
+    printf("n_trades: %d %d\n", trades.size(), mat.n_trade_pairs());
+    cout << trades << endl;
+
+    SemiLocalAlgorithm algo;
+    NotionalMatrix newmat = algo.compress(mat);
+
+    cout << "--- New notional matrix --- " << endl;
+    cout << newmat << endl;
+    buffer buf = write_trades(trades);
+
+    printf("Serialized trade data:\n");
+    print_raw(buf.data(), buf.size());
+
+    printf("\n--- EC256 CODE ---\n");
+    algo_ec256(enclave_id, buf);
 }
