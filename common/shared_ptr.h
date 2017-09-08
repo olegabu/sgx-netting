@@ -20,6 +20,7 @@ private:
         --*ref;
         if(*ref==0)
         {
+            //printf("%p free %p\n", this, ptr);
             delete ref;
             delete ptr;
         }
@@ -31,7 +32,7 @@ public:
     }
     shared_ptr(const shared_ptr<T>& rhs):ptr(rhs.ptr),ref(rhs.ref)
     {
-        //printf("%p copy\n", this);
+        //printf("%p copy %p\n", this, &rhs);
         if(ptr)
             (*ref)++;
     }
@@ -41,7 +42,7 @@ public:
         release();
     }
     shared_ptr<T>& operator=(const shared_ptr<T>& rhs) {
-        //printf("%p op copy\n", this);
+        //printf("%p op copy << %p\n", this, rhs.ptr);
         if (ptr != rhs.ptr) {
             release();
             ptr = rhs.ptr;

@@ -21,8 +21,9 @@ inline void print_key(const char* tag, uint8_t* key)
     printf("\n");
 }
 
-inline void print_raw(const uint8_t* data, uint32_t data_size)
+inline void print_raw(const void* data_, uint32_t data_size)
 {
+    const uint8_t* data = (uint8_t*)data_;
     for(int i=0;i<data_size;i+=16) {
         printf(" 0x%03x | ", i);
         for (int j = 0; j < 16 && i + j < data_size; j++) {
