@@ -57,6 +57,20 @@ Where /path/to/source/folder is the relative/absolute path to this repo.
 
 SGX_MODE can be 'HW'
 
+# Docker
+
+You need to have the docker service running.
+
+To create the docker container after building the project, go to the project folder, where the Dockerfile is and execute:
+~~~
+# docker build -t sgx . 
+~~~
+
+Then you can run it by:
+~~~
+# docker run sgx 
+~~~
+
 # Run
 The built executable 'app' is under sgx-netting-build/bin. Run it as such:
 ~~~
