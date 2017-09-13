@@ -16,6 +16,7 @@
 
 sgx_status_t
 semi_local_compress(
+        sgx_ec256_public_t* peer_key,
         uint8_t* e_trades, uint32_t e_trades_size, uint8_t* trades_mac,
         uint8_t** e_out_data, uint32_t* e_out_data_size, uint8_t* e_out_mac)
 {
@@ -27,18 +28,24 @@ semi_local_compress(
 
     uint8_t* trade_data = (uint8_t*)malloc(e_trades_size);
 
+    sgx_ec256_dh_shared_t sk_key;
+    sgx_ecc_state_handle_t ecc;
+    sgx_ecc256_open_context(&ecc);
+    sgx_ecc256_compute_shared_dhkey(&g_data.key_trades, peer_key, &sk_key, ecc);
+    sgx_ecc256_close_context(ecc);
+
     uint8_t aes_gcm_iv[12] = {0};
     ret = sgx_rijndael128GCM_decrypt(
-            (const sgx_aes_gcm_128bit_key_t *)&g_data.sk_key,
+            (const sgx_aes_gcm_128bit_key_t *)&sk_key,
             e_trades,
             e_trades_size,
             trade_data,
             aes_gcm_iv, 12, NULL, 0,
             (const sgx_aes_gcm_128bit_tag_t *)(trades_mac));
 
-    printf("[enclave] decrypted:\n");
     if(ret != SGX_SUCCESS)
         return ret;
+    printf("[enclave] decrypted:\n");
     print_raw(trade_data, e_trades_size);
 
     NotionalMatrix mat;
@@ -65,7 +72,7 @@ semi_local_compress(
     *e_out_data = (uint8_t*)out_malloc(buf.size());
 
     ret = sgx_rijndael128GCM_encrypt(
-            (const sgx_ec_key_128bit_t*)&g_data.sk_key,
+            (const sgx_ec_key_128bit_t*)&sk_key,
             buf.data(), buf.size(),
             *e_out_data,
             aes_gcm_iv, 12, NULL, 0,
