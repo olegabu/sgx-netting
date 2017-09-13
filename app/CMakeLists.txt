@@ -4,14 +4,13 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_C_FLAGS}")
 include_directories(
         $(CMAKE_CURRENT_SOURCE_DIR)
         ${SGX_SDK}/include
-        .
 )
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
 
 link_directories(.)
-link_libraries(c stdc++ ssl crypto enclave pthread pistache -L${CMAKE_CURRENT_SOURCE_DIR}/../lib -L${SGX_LIBRARY_PATH} ${SGX_URTS_LIB} ${SGX_USVC_LIB})
+link_libraries(c stdc++ ssl crypto pthread pistache -L${CMAKE_CURRENT_SOURCE_DIR}/../lib -L${SGX_LIBRARY_PATH} ${SGX_URTS_LIB} ${SGX_USVC_LIB})
 
 set(SOURCES app.h app.cpp
         ../common/serial_trades.h ../common/serial_trades.cpp

@@ -88,6 +88,23 @@ By default it listens on 0.0.0.0:8080.
 usage:
 rest_sgx [port] [threads]
 
+# Docker
+
+There is a Dockerfile for running the rest server under docker.
+
+To build it, from the source directory run:
+~~~
+docker build -t sgx .
+~~~
+
+Then run it as:
+~~~
+docker run -t -p 8080:80 sgx
+~~~~
+This binds the server to the local port 8080.
+
+To keep the state of the enclave (i.e. its cryptographic state, so it can decrypt inputs), reuse the same container.
+
 # Tests
 
 There are 2 tests that can be run using CMake CTest.
