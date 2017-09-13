@@ -11,7 +11,7 @@ link_directories(.)
 link_libraries(c stdc++ ssl crypto enclave pthread -L${SGX_LIBRARY_PATH} ${SGX_URTS_LIB} ${SGX_USVC_LIB})
 
 add_executable(app
-        app.cpp ocall.cpp
+        main.cpp app.h app.cpp ocall.cpp
         ../common/serial_trades.cpp ../common/serial_trades.h
         ../enclave/enclave_u.c ../common/util.h ../common/buffer.h crypto.cpp crypto.h ../common/NotionalMatrix.h)
 
