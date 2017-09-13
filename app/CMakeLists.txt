@@ -17,6 +17,6 @@ add_executable(app
 
 add_custom_command(TARGET app
         POST_BUILD
-        COMMAND cp trades.txt ${CMAKE_BINARY_DIR}/bin/
+        COMMAND cp trades.txt ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         COMMENT "cp trades.txt")

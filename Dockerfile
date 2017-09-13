@@ -5,7 +5,7 @@ WORKDIR /app
 
 ADD . /src
 
-ADD cmake-build-debug/bin /app
+ADD bin /app
 
 ADD docker_entry.sh /app
 
