@@ -5,10 +5,4 @@
 #ifndef SGX_NETTING_CRYPTO_H
 #define SGX_NETTING_CRYPTO_H
 
-
-class crypto {
-
-};
-
-
 #endif //SGX_NETTING_CRYPTO_H
