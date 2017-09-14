@@ -11,36 +11,6 @@
 #include <map>
 
 
-uint32_t read_i4(uint8_t*& r, uint8_t* end)
-{
-    if(r+4 > end)
-        throw std::runtime_error("Unexpected EOF");
-    uint32_t ret = uint32_t(r[0]) | r[1] << 8 | r[2] << 16 | r[3] << 24;
-    r += 4;
-    return ret;
-}
-
-uint64_t read_i8(uint8_t*& r, uint8_t* end)
-{
-    if(r+8 > end)
-        throw std::runtime_error("Unexpected EOF");
-    uint64_t ret = uint64_t(r[0]) | r[1] << 8 | r[2] << 16 | r[3] << 24 |
-            uint64_t(r[4]) << 32 | uint64_t(r[5]) << 40 | uint64_t(r[6]) << 48 | uint64_t(r[7]) << 56;
-
-    r += 8;
-    return ret;
-}
-
-string read_str(uint8_t*& r, uint8_t* end)
-{
-    uint32_t len = read_i4(r, end);
-    if(r+len > end)
-        throw std::runtime_error("Unexpected EOF");
-    string ret((const char*)r, len);
-    r += len;
-    return ret;
-}
-
 /* The serialized trade_data:
  *  - uint32_t n_standardIds
  *  - list of StandardId where StandardId:
