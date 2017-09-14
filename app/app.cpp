@@ -25,7 +25,7 @@
 #include "crypto.h"
 
 #include "app.h"
-AppGData G;
+AppGData G = {0};
 
 vector<ClearedTrade> load_trades() {
     FILE* trades_f = fopen("trades.txt","rw");
@@ -145,14 +145,12 @@ void app_init(bool& enclave_changed) {
     OPENSSL_init_ssl(0, NULL);
 #endif
     sgx_status_t ret;
-    sgx_enclave_id_t enclave_id;
     int launch_token_update = 0;
-    sgx_launch_token_t launch_token = {0};
     ret = sgx_create_enclave("enclave.so",
                              SGX_DEBUG_FLAG,
-                             &launch_token,
+                             &G.launch_token,
                              &launch_token_update,
-                             &enclave_id, NULL);
+                             &G.enclave_id, NULL);
     if(SGX_SUCCESS != ret)
     {
         errorf("\nError, call sgx_create_enclave fail [%x].", ret);
@@ -162,7 +160,7 @@ void app_init(bool& enclave_changed) {
         enclave_changed = true;
 
     sgx_status_t sret;
-    sret = enclave_init(enclave_id, &ret, 0);
+    sret = enclave_init(G.enclave_id, &ret, 0);
     if(sret != SGX_SUCCESS || ret != SGX_SUCCESS) {
         errorf("\nError at %d, %d, 0x%x." , __LINE__, sret, ret);
     }
