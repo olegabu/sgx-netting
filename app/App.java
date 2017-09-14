@@ -2,6 +2,10 @@
 import data.StandardId;
 import data.Trade;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,7 +19,7 @@ class App {
     */
     private static native boolean sgx_available();
 
-    private static native void encryptTrades(List<Trade> trades);
+    private static native byte[] encryptTrades(List<Trade> trades);
 
     public static void main(String[] args) {
         System.out.println("Hello World! SGX:"+sgx_available());
@@ -28,7 +32,12 @@ class App {
         t1.value = 1234567890L;
         trades.add(t1);
 
-        encryptTrades(trades);
+        byte[] msg = encryptTrades(trades);
 
+        Path file = Paths.get("dump.bin");
+
+        try {
+            Files.write(file, msg);
+        } catch(IOException e) {}
     }
 }

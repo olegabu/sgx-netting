@@ -8,12 +8,14 @@
 #include "app.h"
 
 #include <iostream>
+#include <serial_trades.h>
+#include <enclave_u.h>
 
 using namespace std;
 
 #include "util.h"
 #include "jni_util.h"
-
+#include "crypto.h"
 
 jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     bool enclave_changed = false;
@@ -28,7 +30,7 @@ JNIEXPORT jboolean JNICALL Java_App_sgx_1available
     return (jboolean)true; // FIXME: assumes enclave init is a good enough test
 }
 
-JNIEXPORT void JNICALL Java_App_encryptTrades
+JNIEXPORT jbyteArray JNICALL Java_App_encryptTrades
         (JNIEnv * env, jclass, jobject trade_list)
 {
     // List class things
@@ -89,6 +91,41 @@ JNIEXPORT void JNICALL Java_App_encryptTrades
         trades.push_back(t);
     }
 
-    cout << "Java given trades to encrypt:\n" << trades << endl;
+    cout << "Java given trades to aes_128_encrypt:\n" << trades << endl;
 
+    buffer trade_data = write_trades(trades);
+    cout << "Serialized:\n";
+
+    print_raw(trade_data.data(), trade_data.size());
+
+    sgx_status_t sret, ret;
+    sgx_ec256_private_t prv_key;
+    sgx_ec256_public_t pub_key;
+    sgx_ec256_public_t e_pub_key;
+
+    ec256_gen_key(&prv_key, &pub_key);
+
+    sret = e_get_pub_key(G.enclave_id, &ret, &e_pub_key);
+    assert(ec256_check_point(&e_pub_key));
+    if(sret != SGX_SUCCESS || ret != SGX_SUCCESS) {
+        printf("\nError at %d, %d, %d." , __LINE__, sret, (int32_t)ret);
+    }
+    uint8_t* enc_trades = (uint8_t*)malloc(trade_data.size());
+
+    ec256_dhkey* secret = get_shared_dhkey(&prv_key, &e_pub_key);
+
+    AES_GCM_msg msg = ec256_encrypt_msg(&pub_key, secret, trade_data);
+
+    cout << "Encrypted:\n";
+
+    print_raw(msg.data.data(), msg.data.size());
+    cout << endl;
+
+    buffer msg_buf;
+    msg_buf << msg;
+
+    jbyteArray jbuf = env->NewByteArray(msg_buf.size());
+    env->SetByteArrayRegion(jbuf, 0, msg_buf.size(), (jbyte*)msg_buf.data());
+
+    return jbuf;
 }
