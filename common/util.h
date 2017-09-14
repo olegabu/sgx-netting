@@ -48,7 +48,7 @@ inline ostream& operator <<(ostream& os, const ClearedTrade& t){
 template<class T>
 inline ostream& operator <<(ostream& os, const vector<T>& vec){
     for (int i = 0; i < vec.size(); ++i) {
-        os << i << " - " << vec[i] << "\n";
+        os << "[" << i << "] " << vec[i] << "\n";
     }
     return os;
 }
