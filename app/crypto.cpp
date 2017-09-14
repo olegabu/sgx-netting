@@ -118,7 +118,7 @@ EC_KEY* to_ec_key(sgx_ec256_public_t* pub_key)
     return ec_key;
 }
 
-void gen_key(sgx_ec256_private_t* prv_key, sgx_ec256_public_t* pub_key) {
+void ec256_gen_key(sgx_ec256_private_t *prv_key, sgx_ec256_public_t *pub_key) {
     EC_GROUP *curve;
 
     if (NULL == (curve = EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1)))
@@ -150,7 +150,7 @@ void gen_key(sgx_ec256_private_t* prv_key, sgx_ec256_public_t* pub_key) {
     BN_bn2lebinpad(pub_y, (uint8_t*)pub_key->gy, 32);
 }
 
-uint8_t* get_shared_dhkey(sgx_ec256_private_t* prv_key, sgx_ec256_public_t* peer_key)
+ec256_dhkey* get_shared_dhkey(sgx_ec256_private_t* prv_key, sgx_ec256_public_t* peer_key)
 {
     EC_KEY *ec_key = to_ec_key(prv_key);
     EC_KEY *ec_peer = to_ec_key(peer_key);
@@ -168,9 +168,9 @@ uint8_t* get_shared_dhkey(sgx_ec256_private_t* prv_key, sgx_ec256_public_t* peer
 
     // Big endian -> little endian, so that shared secrets match in app and enclave
     reverse(secret,secret+secret_len);
-    return secret;
+    return (ec256_dhkey*)secret;
 }
-void decrypt(uint8_t* key, uint8_t* data, uint32_t data_size, uint8_t* mac, uint8_t* out_data)
+void aes128_decrypt(uint8_t *key, uint8_t *data, uint32_t data_size, gcm_tag_t *mac, uint8_t *out_data)
 {
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     uint8_t iv[12] = {0};
@@ -191,13 +191,13 @@ void decrypt(uint8_t* key, uint8_t* data, uint32_t data_size, uint8_t* mac, uint
     // authentication step
     if(1 != EVP_DecryptFinal(ctx, out_data+n_processed, &n_processed))
     {
-        ERR_print_errors_fp(stdout);
+        ERR_print_errors_fp(stderr);
         throw runtime_error("Failure");
     }
     EVP_CIPHER_CTX_free(ctx);
 }
 
-void encrypt(uint8_t* key, const uint8_t* data, uint32_t data_size, uint8_t* out_data, uint8_t* out_mac) {
+void aes128_encrypt(uint8_t *key, const uint8_t *data, uint32_t data_size, uint8_t *out_data, gcm_tag_t *out_mac) {
     EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
     uint8_t iv[12] = {0};
 
@@ -236,7 +236,7 @@ void encrypt(uint8_t* key, const uint8_t* data, uint32_t data_size, uint8_t* out
     EVP_CIPHER_CTX_free(ctx);
 }
 
-bool check_point(sgx_ec256_public_t* pub_key) {
+bool ec256_check_point(sgx_ec256_public_t *pub_key) {
     BN_CTX *ctx = BN_CTX_new();
 
     EC_KEY *ec_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
@@ -249,4 +249,16 @@ bool check_point(sgx_ec256_public_t* pub_key) {
     BIGNUM *bn_pub_y = BN_lebin2bn(pub_key->gy, 32, 0);
 
     return 1 == EC_POINT_set_affine_coordinates_GFp(curve, pub, bn_pub_x, bn_pub_y, ctx);
+}
+
+AES_GCM_msg ec256_encrypt_msg(sgx_ec256_public_t* pub_key, ec256_dhkey* sk_key, const buffer &msg_data) {
+    AES_GCM_msg out_msg;
+
+    out_msg.peer_key = *pub_key;
+
+    out_msg.data = buffer(msg_data.size());
+    out_msg.data.size(msg_data.size());
+    aes128_encrypt((uint8_t *) sk_key, msg_data.data(), msg_data.size(), out_msg.data.data(), &out_msg.tag);
+
+    return out_msg;
 }

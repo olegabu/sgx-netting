@@ -88,31 +88,30 @@ int algo_ec256(sgx_enclave_id_t enclave_id, buffer &trade_data) {
     memset(&prv_key, 0, sizeof(sgx_ec256_public_t));
     memset(&pub_key, 0, sizeof(sgx_ec256_public_t));
     memset(&e_pub_key, 0, sizeof(sgx_ec256_public_t));
-    gen_key(&prv_key, &pub_key);
+    ec256_gen_key(&prv_key, &pub_key);
 
     //assert(check_point(&pub_key));
 
     sret = e_get_pub_key(enclave_id, &ret, &e_pub_key);
-    assert(check_point(&e_pub_key));
+    assert(ec256_check_point(&e_pub_key));
     if(sret != SGX_SUCCESS || ret != SGX_SUCCESS) {
         printf("\nError at %d, %d, %d." , __LINE__, sret, (int32_t)ret);
         return -1;
     }
     uint8_t* enc_trades = (uint8_t*)malloc(trade_data.size());
 
-    uint8_t* secret = get_shared_dhkey(&prv_key, &e_pub_key);
-    uint8_t t_mac[16];
-    encrypt(secret, trade_data.data(), trade_data.size(), enc_trades, t_mac);
+    uint8_t* secret = (uint8_t*)get_shared_dhkey(&prv_key, &e_pub_key);
+    gcm_tag_t t_mac;
+    aes128_encrypt(secret, trade_data.data(), trade_data.size(), enc_trades, &t_mac);
 
     uint8_t* new_trades = 0;
     uint32_t new_trades_n = 0;
-    uint8_t new_mac[16];
-    //uint8_t pub_key[16];
+    gcm_tag_t new_mac;
 
     sret = semi_local_compress(enclave_id, &ret,
                                &pub_key,
-                               enc_trades, trade_data.size(), t_mac,
-                               &new_trades, &new_trades_n, new_mac);
+                               enc_trades, trade_data.size(), (uint8_t*)&t_mac,
+                               &new_trades, &new_trades_n, (uint8_t*)&new_mac);
 
     if(sret != SGX_SUCCESS || ret != SGX_SUCCESS) {
         printf("\nError, %d, %x.", sret, ret);
@@ -120,7 +119,7 @@ int algo_ec256(sgx_enclave_id_t enclave_id, buffer &trade_data) {
     }
 
     uint8_t* dec_new_trades = (uint8_t*) malloc(new_trades_n);
-    decrypt(secret, new_trades, new_trades_n, new_mac, dec_new_trades);
+    aes128_decrypt(secret, new_trades, new_trades_n, &new_mac, dec_new_trades);
 
     vector<ClearedTrade> new_trades_list = read_trades(dec_new_trades,new_trades_n);
 
