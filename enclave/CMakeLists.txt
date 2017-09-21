@@ -56,6 +56,6 @@ add_custom_command(TARGET enclave
         -key enclave_private.pem
         -config enclave.config.xml
         -enclave $<TARGET_FILE:enclave>
-        -out ${CMAKE_BINARY_DIR}/bin/enclave.so
+        -out ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/enclave.so
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMENT "Signing the enclave => ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/enclave.signed.so")
+        COMMENT "Signing the enclave => ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/enclave.so")
