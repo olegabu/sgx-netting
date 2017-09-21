@@ -262,3 +262,15 @@ AES_GCM_msg ec256_encrypt_msg(sgx_ec256_public_t* pub_key, ec256_dhkey* sk_key, 
 
     return out_msg;
 }
+
+buffer ec256_decrypt_msg(sgx_ec256_private_t *prv_key, AES_GCM_msg& msg) {
+    ec256_dhkey* sk_key = get_shared_dhkey(prv_key, &msg.peer_key);
+
+    buffer out(msg.data.size());
+    out.size(msg.data.size());
+    aes128_decrypt((uint8_t*)sk_key, msg.data.data(), msg.data.size(), &msg.tag, out.data());
+
+    free(sk_key);
+
+    return out;
+}

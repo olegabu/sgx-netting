@@ -45,5 +45,6 @@ inline buffer& operator >>(buffer& buf, AES_GCM_msg& rhs){
 }
 
 AES_GCM_msg ec256_encrypt_msg(sgx_ec256_public_t* pub_key, ec256_dhkey* sk_key, const buffer& msg_data);
+buffer ec256_decrypt_msg(sgx_ec256_private_t* prv_key, AES_GCM_msg& msg_data);
 
 #endif //SGX_NETTING_CRYPTO_H
