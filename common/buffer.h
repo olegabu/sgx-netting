@@ -108,6 +108,17 @@ public:
         read_pos += len;
         return ret;
     }
+
+    uint8_t* read_ptr(){
+        return &*m_data.begin() + read_pos;
+    }
+
+    uint8_t* begin() {
+        return data();
+    }
+    uint8_t* end() {
+        return &*m_data.begin()+m_data.size();
+    }
 };
 
 inline int32_t read_i4(uint8_t*& r, uint8_t* end)
