@@ -46,6 +46,14 @@ struct NotionalMatrix {
         auto it1 = matrix.find(p_cp_key);
         if(it1 == matrix.end())
             it1 = matrix.insert(MatVal(p_cp_key, 0)).first;
+        else{
+            if(it1->second == t.value)
+                return;
+            else
+                throw runtime_error(string(
+            "Notional trade already exists with different value:") + t.party + " <> " +t.counter_party);
+        }
+
         auto it2 = matrix.find(cp_p_key);
         if(it2 == matrix.end())
             it2 = matrix.insert(MatVal(cp_p_key, 0)).first;
