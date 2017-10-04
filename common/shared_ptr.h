@@ -5,6 +5,10 @@
 #ifndef SGX_NETTING_SHARED_PTR_H
 #define SGX_NETTING_SHARED_PTR_H
 
+
+#ifdef ENCLAVE
+#include "shared_ptr.h"
+
 #include <enclave_state.h>
 
 template<class T>
@@ -83,5 +87,10 @@ public:
         return ptr == rhs.ptr;
     }
 };
+
+#else
+#include <memory>
+using std::shared_ptr;
+#endif
 
 #endif //SGX_NETTING_SHARED_PTR_H
