@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #endif
+#include <string>
 
 inline void print_key(const char* tag, uint8_t* key)
 {
@@ -39,9 +40,10 @@ inline void print_raw(const void* data_, uint32_t data_size)
 
 #include "NotionalMatrix.h"
 
-inline ostream& operator <<(ostream& os, const ClearedTrade& t){
-    return os << t.party->scheme << '~' << t.party->value << " "
-              << t.counter_party->scheme << '~' << t.counter_party->value << " "
+inline ostream& operator <<(ostream& os, const ClearedTrade& t)
+{
+    return os << t.party << " "
+              << t.counter_party << " "
               << t.value;
 }
 
@@ -73,6 +75,19 @@ inline std::vector<std::string> split(const std::string &s, char delim) {
     split(s, delim, std::back_inserter(elems));
     return elems;
 }
+#else
+
+inline std::string dec(unsigned x)
+{
+    char c[128];
+    char* s = c+128;
+    *--s = 0;
+    if (!x) *--s = '0';
+    for (; x; x/=10) *--s = '0'+x%10;
+
+    return std::string(s, c + 128 - s);
+}
 #endif
+
 
 #endif //SGX_NETTING_UTIL_H

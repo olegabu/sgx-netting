@@ -6,18 +6,24 @@
 #define SGX_NETTING_TRADE_H
 
 #include <string>
+using std::string;
+
 #include "shared_ptr.h"
 
-using namespace std;
 struct StandardId {
     StandardId(){}
     StandardId(string scheme, string value)
             : scheme(scheme),value(value) {}
 
     string scheme, value;
+
+    string str() {
+        return scheme + "~" + value;
+    }
 };
 
-typedef shared_ptr<StandardId> party_id_t;
+//typedef shared_ptr<StandardId> party_id_t;
+typedef string party_id_t;
 typedef int64_t value_t;
 
 struct ClearedTrade {

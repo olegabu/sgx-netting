@@ -34,7 +34,7 @@ vector<ClearedTrade> load_trades() {
         throw runtime_error("Failed to open trades.txt");
     }
     vector<ClearedTrade> trades;
-    map<string, shared_ptr<StandardId>> ps_to_p;
+    map<string, party_id_t> ps_to_p;
     while(true) {
         char sid1[64],sid2[64];
         int64_t value;
@@ -54,7 +54,8 @@ vector<ClearedTrade> load_trades() {
         auto v_a = split(k_a, '~');
         auto it_a = ps_to_p.find(k_a);
         if(it_a == ps_to_p.end()) {
-            ps_to_p[k_a] = p_a = party_id_t(new StandardId(v_a[0],v_a[1]));
+            //ps_to_p[k_a] = p_a = party_id_t(new StandardId(v_a[0],v_a[1]));
+            ps_to_p[k_a] = p_a = v_a[0] + "~" + v_a[1];
         } else
             p_a = it_a->second;
 
@@ -63,7 +64,8 @@ vector<ClearedTrade> load_trades() {
         auto v_b = split(k_b, '~');
         auto it_b = ps_to_p.find(k_b);
         if(it_b == ps_to_p.end()) {
-            ps_to_p[k_b] = p_b = party_id_t(new StandardId(v_b[0],v_b[1]));
+            //ps_to_p[k_b] = p_b = party_id_t(new StandardId(v_b[0],v_b[1]));
+            ps_to_p[k_b] = p_b = v_b[0] + "~" + v_b[1];
         } else
             p_b = it_b->second;
 
@@ -133,6 +135,8 @@ int algo_ec256(sgx_enclave_id_t enclave_id, buffer &trade_data) {
         return -1;\
     }
 
+#define SEALED_SIZE 1024
+
 void app_init(bool& enclave_changed) {
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
     SSL_library_init();
@@ -143,6 +147,17 @@ void app_init(bool& enclave_changed) {
 #else
     OPENSSL_init_ssl(0, NULL);
 #endif
+    uint8_t sealed_data[SEALED_SIZE] = {0};
+
+    FILE* tokf = fopen("enclave.state", "r+b");
+
+    if(tokf){
+        if(fread(&G.launch_token, 1, sizeof(sgx_launch_token_t), tokf) != 1024
+            || fread(sealed_data, 1, SEALED_SIZE, tokf) != SEALED_SIZE )
+            throw runtime_error("enclave.state : Unexpected EOF");
+        fclose(tokf);
+    }
+
     sgx_status_t ret;
     int launch_token_update = 0;
     ret = sgx_create_enclave("enclave.so",
@@ -159,7 +174,7 @@ void app_init(bool& enclave_changed) {
         enclave_changed = true;
 
     sgx_status_t sret;
-    sret = enclave_init(G.enclave_id, &ret, 0);
+    sret = enclave_init(G.enclave_id, &ret, tokf ? sealed_data : 0);
     if(sret != SGX_SUCCESS || ret != SGX_SUCCESS) {
         errorf("\nError at %d, %d, 0x%x." , __LINE__, sret, ret);
     }
@@ -169,9 +184,21 @@ void app_close()
 {
     sgx_status_t sret, ret;
 
-    //enclave_close(G.enclave_id, &ret, )
+    uint8_t sealed_data[SEALED_SIZE] = {0};
+    sret = enclave_close(G.enclave_id, &ret, sealed_data);
+
+    FILE* tokf = fopen("enclave.state", "wb");
+
+    if(!tokf)
+        throw runtime_error("Cannot open enclave.state");
+
+    fwrite(&G.launch_token, 1, 1024, tokf);
+    fwrite(sealed_data, 1, SEALED_SIZE, tokf);
+
+    fclose(tokf);
+
     sgx_destroy_enclave(G.enclave_id);
-    if(sret != SGX_SUCCESS) {
-        errorf("\nError at %d, %d, 0x%x." , __LINE__, sret);
+    if(sret != SGX_SUCCESS || ret != SGX_SUCCESS) {
+        errorf("\nError at %d, %d, 0x%x." , __LINE__, sret, ret);
     }
 }

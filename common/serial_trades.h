@@ -11,6 +11,6 @@
 
 vector<ClearedTrade> read_trades(uint8_t* trade_data, uint32_t trades_size);
 
-buffer write_trades(const vector<ClearedTrade>& trades);
+void write_trades(const vector<ClearedTrade>& trades, buffer& to_buf);
 
 #endif //SGX_NETTING_SERIAL_TRADES_H

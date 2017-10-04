@@ -10,6 +10,8 @@
 #include <set>
 #include <map>
 
+using std::set;
+using std::map;
 
 /* The serialized trade_data:
  *  - uint32_t n_standardIds
@@ -33,12 +35,9 @@ vector<ClearedTrade> read_trades(uint8_t *trade_data, uint32_t trades_size) {
 
     uint32_t n_standardIds = read_i4(r, end);
 
-    vector<shared_ptr<StandardId>> sids;
+    vector<party_id_t> sids;
     for(int i=0;i < n_standardIds; i++) {
-        StandardId* sid = new StandardId;
-        sid->scheme = read_str(r, end);
-        sid->value = read_str(r, end);
-        sids.push_back( sid );
+        sids.push_back(read_str(r, end));
     }
 
     uint32_t n_trades = read_i4(r, end);
@@ -60,32 +59,29 @@ vector<ClearedTrade> read_trades(uint8_t *trade_data, uint32_t trades_size) {
     return trades;
 }
 
-buffer write_trades(const vector<ClearedTrade>& trades) {
-    buffer ret(2048);
+void write_trades(const vector<ClearedTrade>& trades, buffer& to_buf) {
 
-    set<shared_ptr<StandardId>> sids;
+    set<party_id_t> sids;
     for (int i = 0; i < trades.size(); ++i) {
         sids.insert(trades[i].party);
         sids.insert(trades[i].counter_party);
     }
 
-    map<shared_ptr<StandardId>, uint32_t> sid_to_id;
-    ret.put_i4(sids.size());
+    map<party_id_t, uint32_t> sid_to_id;
+    to_buf.put_i4(sids.size());
 
     uint32_t i = 0;
     for (auto it = sids.begin(); it != sids.end(); ++it, i++) {
-        const shared_ptr<StandardId>& sid = *it;
+        const party_id_t& sid = *it;
         sid_to_id[*it] = i;
-        ret << sid->scheme << sid->value;
+        to_buf << sid;
     }
 
-    ret.put_i4(trades.size());
+    to_buf.put_i4(trades.size());
 
     for (int i = 0; i < trades.size(); ++i) {
-        ret.put_i4(sid_to_id[trades[i].party]);
-        ret.put_i4(sid_to_id[trades[i].counter_party]);
-        ret.put_i8(trades[i].value);
+        to_buf.put_i4(sid_to_id[trades[i].party]);
+        to_buf.put_i4(sid_to_id[trades[i].counter_party]);
+        to_buf.put_i8(trades[i].value);
     }
-
-    return ret;
 }
