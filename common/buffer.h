@@ -18,8 +18,7 @@ class buffer {
     vector<uint8_t> m_data;
     uint32_t read_pos = 0;
 public:
-    buffer(){}
-    buffer(uint32_t reserved_size) {
+    buffer(uint32_t reserved_size = 1024) {
         m_data.reserve(reserved_size);
     }
 
@@ -44,7 +43,8 @@ public:
         uint8_t* end = &*m_data.end();
         if(r+n > end)
             throw std::runtime_error("Unexpected EOF");
-        memcpy(dst, r, n);
+        if(dst)
+            memcpy(dst, r, n);
         read_pos += n;
     }
 
@@ -99,9 +99,9 @@ public:
 
     string read_str()
     {
+        int32_t len = read_i4();
         uint8_t* r = &*m_data.begin() + read_pos;
         uint8_t* end = &*m_data.end();
-        int32_t len = read_i4();
         if(r+len > end)
             throw std::runtime_error("Unexpected EOF");
         string ret((const char*)r, len);
@@ -160,8 +160,30 @@ inline buffer& operator <<(buffer& buf, const buffer& rhs){
 inline buffer& operator >>(buffer& buf, buffer& rhs){
     uint32_t size = buf.read_i4();
     rhs = buffer(size);
+    rhs.size(size);
     buf.read(rhs.data(), size);
     return buf;
 }
 
+template<class T>
+inline buffer& operator <<(buffer& buf, const vector<T>& rhs)
+{
+    buf.put_i4(rhs.size());
+    for(int i=0;i<rhs.size();i++){
+        buf << rhs[i];
+    }
+    return buf;
+}
+
+template<class T>
+inline buffer& operator >>(buffer& buf, vector<T>& rhs)
+{
+    uint32_t size = buf.read_i4();
+    for(int i=0; i<size; i++){
+        T t;
+        buf >> t;
+        rhs.push_back(t);
+    }
+    return buf;
+}
 #endif //SGX_NETTING_BUFFER_H
