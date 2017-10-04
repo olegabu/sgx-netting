@@ -102,9 +102,9 @@ int algo_ec256(sgx_enclave_id_t enclave_id, buffer &trade_data) {
     }
     uint8_t* enc_trades = (uint8_t*)malloc(trade_data.size());
 
-    uint8_t* secret = (uint8_t*)get_shared_dhkey(&prv_key, &e_pub_key);
+    ec256_dhkey_t secret = get_shared_dhkey(&prv_key, &e_pub_key);
     gcm_tag_t t_mac;
-    aes128_encrypt(secret, trade_data.data(), trade_data.size(), enc_trades, &t_mac);
+    aes128_encrypt(secret.b, trade_data.data(), trade_data.size(), enc_trades, &t_mac);
 
     uint8_t* new_trades = 0;
     uint32_t new_trades_n = 0;
@@ -121,7 +121,7 @@ int algo_ec256(sgx_enclave_id_t enclave_id, buffer &trade_data) {
     }
 
     uint8_t* dec_new_trades = (uint8_t*) malloc(new_trades_n);
-    aes128_decrypt(secret, new_trades, new_trades_n, &new_mac, dec_new_trades);
+    aes128_decrypt(secret.b, new_trades, new_trades_n, &new_mac, dec_new_trades);
 
     vector<ClearedTrade> new_trades_list = read_trades(dec_new_trades,new_trades_n);
 

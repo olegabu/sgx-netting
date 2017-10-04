@@ -10,13 +10,15 @@ include_directories(
 link_directories(.)
 link_libraries(c stdc++ ssl crypto enclave pthread -L${SGX_LIBRARY_PATH} ${SGX_URTS_LIB} ${SGX_USVC_LIB})
 
-add_executable(app
-        main.cpp app.h app.cpp ocall.cpp
-        ../common/serial_trades.cpp ../common/serial_trades.h
-        ../enclave/enclave_u.c ../common/util.h ../common/buffer.h crypto.cpp crypto.h ../common/NotionalMatrix.h)
+set(SOURCES app.h app.cpp
+        ../common/serial_trades.h ../common/serial_trades.cpp
+        ../common/util.h ../common/buffer.h
+        ../common/crypto.h crypto.cpp
+        ../common/NotionalMatrix.h
+        ../enclave/enclave_u.c ocall.cpp)
 
-add_custom_command(TARGET app
-        POST_BUILD
-        COMMAND cp trades.txt ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMENT "cp trades.txt")
+add_executable(app
+        main.cpp ${SOURCES})
+
+file(COPY trades.txt
+        DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})

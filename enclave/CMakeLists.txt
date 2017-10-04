@@ -33,7 +33,7 @@ add_library(enclave SHARED
         ../common/SemiLocalAlgorithm.h
         enclave_state.h enclave_state.cpp
         outside.h outside.cpp
-        crypto.h crypto.cpp
+        ../common/crypto.h crypto.cpp
         semi_local_compress.cpp)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${SGX_COMMON_CFLAGS} -nostdinc -fvisibility=hidden -fpie -fstack-protector")

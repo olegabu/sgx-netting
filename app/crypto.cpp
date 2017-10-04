@@ -144,25 +144,25 @@ void ec256_gen_key(sgx_ec256_private_t *prv_key, sgx_ec256_public_t *pub_key) {
     BN_free(pub_y);
 }
 
-ec256_dhkey* get_shared_dhkey(sgx_ec256_private_t* prv_key, sgx_ec256_public_t* peer_key)
+ec256_dhkey_t get_shared_dhkey(sgx_ec256_private_t* prv_key, sgx_ec256_public_t* peer_key)
 {
     EC_KEY *ec_key = to_ec_key(prv_key);
     EC_KEY *ec_peer = to_ec_key(peer_key);
 
     int secret_len = 32;
-    uint8_t* secret = (uint8_t*)malloc(32);
+    ec256_dhkey_t secret;
 
     /* Derive the shared secret */
     secret_len = ECDH_compute_key(
-            secret, secret_len, EC_KEY_get0_public_key(ec_peer), ec_key, NULL);
+            secret.b, secret_len, EC_KEY_get0_public_key(ec_peer), ec_key, NULL);
 
     /* Clean up */
     EC_KEY_free(ec_key);
     EC_KEY_free(ec_peer);
 
     // Big endian -> little endian, so that shared secrets match in app and enclave
-    reverse(secret,secret+secret_len);
-    return (ec256_dhkey*)secret;
+    reverse(secret.b,secret.b+secret_len);
+    return secret;
 }
 void aes128_decrypt(uint8_t *key, uint8_t *data, uint32_t data_size, gcm_tag_t *mac, uint8_t *out_data)
 {
@@ -232,7 +232,7 @@ bool ec256_check_point(sgx_ec256_public_t *pub_key) {
     return ret;
 }
 
-AES_GCM_msg ec256_encrypt_msg(sgx_ec256_public_t* pub_key, ec256_dhkey* sk_key, const buffer &msg_data) {
+AES_GCM_msg ec256_encrypt_msg(sgx_ec256_public_t* pub_key, ec256_dhkey_t* sk_key, const buffer &msg_data) {
     AES_GCM_msg out_msg;
 
     out_msg.peer_key = *pub_key;
@@ -245,13 +245,11 @@ AES_GCM_msg ec256_encrypt_msg(sgx_ec256_public_t* pub_key, ec256_dhkey* sk_key, 
 }
 
 buffer ec256_decrypt_msg(sgx_ec256_private_t *prv_key, AES_GCM_msg& msg) {
-    ec256_dhkey* sk_key = get_shared_dhkey(prv_key, &msg.peer_key);
+    ec256_dhkey_t sk_key = get_shared_dhkey(prv_key, &msg.peer_key);
 
     buffer out(msg.data.size());
     out.size(msg.data.size());
-    aes128_decrypt((uint8_t*)sk_key, msg.data.data(), msg.data.size(), &msg.tag, out.data());
-
-    free(sk_key);
+    aes128_decrypt(sk_key.b, msg.data.data(), msg.data.size(), &msg.tag, out.data());
 
     return out;
 }
