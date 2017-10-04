@@ -12,11 +12,13 @@ include (cmake/ConfigSGX.cmake)
 
 set(CMAKE_CXX_STANDARD 11)
 
-include_directories(app enclave common)
+include_directories(app enclave common include)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
+
+enable_testing()
 
 add_subdirectory(app)
 add_subdirectory(enclave)

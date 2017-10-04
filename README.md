@@ -77,9 +77,28 @@ mkdir sgx-netting-build
 cd sgx-netting-build
 cmake ../sgx-netting -DSGX_MODE=SIM
 make -j 10
-
-
 ~~~
+
+# REST
+
+bin/rest_sgx is the rest server binary.
+
+By default it listens on 0.0.0.0:8080.
+
+usage:
+rest_sgx [port] [threads]
+
+# Tests
+
+There are 2 tests that can be run using CMake CTest.
+
+Do not forget to load the SGX env first.
+
+To run the tests,  go to the cmake build directory and:
+~~~
+ctest --verbose
+~~~
+
 
 # Todo
 Not use the enclave_private.pem in the git repo for signing the enclave and use the 2-step method for signing the enclave.

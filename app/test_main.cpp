@@ -31,7 +31,8 @@ int main(int argc, char* argv[])
 
     cout << "--- New notional matrix --- " << endl;
     cout << newmat << endl;
-    buffer buf = write_trades(trades);
+    buffer buf;
+    write_trades(trades, buf);
 
     printf("Serialized trade data:\n");
     print_raw(buf.data(), buf.size());
