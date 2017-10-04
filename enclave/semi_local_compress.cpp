@@ -6,6 +6,7 @@
 #include <sgx_tcrypto.h>
 #include <stdlib.h>
 #include <sgx_ecp_types.h>
+#include <sgx_trts.h>
 
 #include "util.h"
 #include "enclave_state.h"
@@ -13,6 +14,7 @@
 #include "enclave_t.h"
 #include "SemiLocalAlgorithm.h"
 
+#include "crypto.h"
 
 sgx_status_t
 semi_local_compress(
@@ -66,7 +68,8 @@ semi_local_compress(
     NotionalMatrix newmat = algo.compress(mat);
 
     vector<ClearedTrade> newtrades = newmat.to_list();
-    buffer buf = write_trades(newtrades);
+    buffer buf;
+    write_trades(newtrades, buf);
 
     *e_out_data_size = buf.size();
     *e_out_data = (uint8_t*)out_malloc(buf.size());
@@ -82,4 +85,102 @@ semi_local_compress(
     if(ret != SGX_SUCCESS)
         return ret;
     return ret;
+}
+
+sgx_status_t compress_slv1_vector(
+uint8_t* in_inputs, uint32_t in_inputs_size,
+uint8_t** out_trades, uint32_t* out_trades_size) {
+    try {
+        if (g_state != INIT)
+            return SGX_ERROR_INVALID_ENCLAVE;
+
+        if (!sgx_is_outside_enclave(in_inputs, in_inputs_size)) {
+            //print("Incorrect input parameter(s).\n");
+            return SGX_ERROR_INVALID_PARAMETER;
+        }
+
+        // Deserialize input list
+        vector<AES_GCM_msg> inputs;
+        {
+            buffer buf;
+            buf.write(in_inputs, in_inputs_size);
+
+            buf >> inputs;
+        }
+
+        // Decrypt inputs
+        vector<ClearedTrade> all_trades;
+        map<string, sgx_ec256_public_t> party_keys;
+        for (AES_GCM_msg &msg : inputs) {
+            buffer data = ec256_decrypt_msg(&g_data.key_trades, msg);
+
+            string p_id;
+            data >> p_id;
+
+            party_keys[p_id] = msg.peer_key;
+
+            vector<ClearedTrade> trades = read_trades(data.read_ptr(), data.size());
+
+            for (ClearedTrade &t : trades) {
+                all_trades.push_back(t);
+            }
+        }
+
+        // === Run algorithm ===
+        SemiLocalAlgorithm algo;
+
+        NotionalMatrix mat;
+        mat.add(all_trades);
+        NotionalMatrix newmat = algo.compress(mat);
+
+        vector<ClearedTrade> newtrades = newmat.to_list();
+
+        // Prepare output for each party
+        vector<string> output_parties;
+        vector<AES_GCM_msg> outputs;
+
+        for (const party_id_t &p_id : newmat.members_set) {
+            vector<ClearedTrade> p_trades;
+            for (ClearedTrade &t : newtrades) {
+                if (t.party == p_id || t.counter_party == p_id) {
+                    p_trades.push_back(t);
+                }
+            }
+
+            if (p_trades.size() == 0)
+                continue;
+
+            buffer buf;
+            buf << p_id;
+            write_trades(p_trades, buf);
+
+            sgx_ec256_public_t* peer_key;
+
+            auto it = party_keys.find(p_id);
+            peer_key = (it != party_keys.end()) ? &it->second : 0;
+
+            // Skip party if we do not have a public key
+            if(peer_key == 0)
+                continue;
+
+            ec256_dhkey_t sk_key = get_shared_dhkey(&g_data.key_trades, peer_key);
+            output_parties.push_back(p_id);
+            AES_GCM_msg msg = ec256_encrypt_msg(&g_data.pub_key_trades, &sk_key, buf);
+            outputs.push_back(msg);
+        }
+
+
+        buffer out_buf;
+
+        out_buf << output_parties;
+        out_buf << outputs;
+
+        ocall_malloc((void **) out_trades, out_buf.size());
+        memcpy(*out_trades, out_buf.data(), out_buf.size());
+        *out_trades_size = out_buf.size();
+    }catch (std::exception& e){
+        printf("exc: %s", e.what());
+        return SGX_ERROR_INVALID_PARAMETER;
+    }
+    return SGX_SUCCESS;
 }

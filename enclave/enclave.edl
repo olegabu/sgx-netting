@@ -47,6 +47,12 @@ enclave {
                 [out,isptr] uint8_t** e_out_data,
                 [in,out,size=4] uint32_t* e_out_data_size,
                 [out,size=16] uint8_t* e_out_mac);
+
+        public sgx_status_t compress_slv1_vector(
+            [user_check] uint8_t* inputs,
+            uint32_t inputs_size,
+            [out,isptr] uint8_t** out_trades,
+            [out,size=4] uint32_t* out_trades_size);
     };
 
     untrusted {
