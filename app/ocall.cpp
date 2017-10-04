@@ -11,5 +11,7 @@ void* ocall_malloc(uint32_t size)
 }
 int ocall_print_string(const char *str)
 {
-    return (int)fwrite(str, 1, strlen(str), stdout);
+    int ret = (int)fwrite(str, 1, strlen(str), stdout);
+    fflush(stdout);
+    return ret;
 }
