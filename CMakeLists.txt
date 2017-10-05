@@ -22,3 +22,4 @@ enable_testing()
 
 add_subdirectory(app)
 add_subdirectory(enclave)
+add_subdirectory(lib)
