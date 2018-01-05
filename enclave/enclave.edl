@@ -1,0 +1,62 @@
+/*
+ * Copyright (C) 2011-2017 Intel Corporation. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ *   * Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in
+ *     the documentation and/or other materials provided with the
+ *     distribution.
+ *   * Neither the name of Intel Corporation nor the names of its
+ *     contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ */
+
+enclave {
+
+    include "sgx_tcrypto.h"
+
+    trusted {
+		public sgx_status_t enclave_init([user_check] uint8_t* e_sealed);
+		public sgx_status_t enclave_close([user_check] uint8_t* e_sealed);
+
+        public sgx_status_t e_get_pub_key([user_check] sgx_ec256_public_t* pub_key);
+
+        public sgx_status_t semi_local_compress(
+            [user_check]sgx_ec256_public_t* peer_key,
+                [in,size=e_trades_size] uint8_t* e_trades,
+                uint32_t e_trades_size,
+                [in,size=16] uint8_t* trades_mac,
+                [out,isptr] uint8_t** e_out_data,
+                [in,out,size=4] uint32_t* e_out_data_size,
+                [out,size=16] uint8_t* e_out_mac);
+
+        public sgx_status_t compress_slv1_vector(
+            [user_check] uint8_t* inputs,
+            uint32_t inputs_size,
+            [out,isptr] uint8_t** out_trades,
+            [out,size=4] uint32_t* out_trades_size);
+    };
+
+    untrusted {
+        void* ocall_malloc(uint32_t size);
+        int ocall_print_string([in, string] const char *str);
+    };
+};

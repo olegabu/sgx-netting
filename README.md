@@ -36,3 +36,87 @@ still clear text
 1. http or grpc endpoint to receive inputs and respond to queries for results
 1. add remote attestation query endpoint
 1. put in a docker container 
+
+# Requirements
+For this project, you mainly need the SGX SDK.
+You can also install the driver and PSW for hardware support.
+* [Get them here](https://01.org/intel-software-guard-extensions/downloads)
+
+# Building
+First, load the sgx sdk environment into your shell
+~~~
+$ . /opt/intel/sgxsdk/environment
+~~~
+To build, create a build directory and run cmake to generate the makefiles
+~~~
+$ mkdir sgx-netting-build && cd sgx-netting-build
+$ cmake /path/to/source/folder -DSGX_MODE=SIM
+$ make
+~~~
+Where /path/to/source/folder is the relative/absolute path to this repo.
+
+SGX_MODE can be 'HW'
+
+# Run
+The built executable 'app' is under sgx-netting-build/bin. Run it as such:
+~~~
+$ . /opt/intel/sgxsdk/environment # load the sgx sdk environment if not loaded
+$ cd sgx-netting-build/bin
+$ ./app
+~~~
+
+# Ubuntu 16.04 the 'make everything work'
+~~~
+sudo apt-get install build-essential python
+wget https://download.01.org/intel-sgx/linux-1.9/sgx_linux_ubuntu16.04.1_x64_sdk_1.9.100.39124.bin
+sh sgx_linux_ubuntu16.04.1_x64_sdk_1.9.100.39124.bin # choose install directory - /opt/intel
+. /opt/intel/sgxsdk/environment # source the sgxsdk environment into the shell
+git clone git@github.com:olegabu/sgx-netting.git
+pushd sgx-netting && git checkout uglydev && popd
+mkdir sgx-netting-build
+cd sgx-netting-build
+cmake ../sgx-netting -DSGX_MODE=SIM
+make -j 10
+~~~
+
+# REST
+
+bin/rest_sgx is the rest server binary.
+
+By default it listens on 0.0.0.0:8080.
+
+usage:
+rest_sgx [port] [threads]
+
+# Docker
+
+There is a Dockerfile for running the rest server under docker.
+
+To build it, from the source directory run:
+~~~
+docker build -t sgx .
+~~~
+
+Then run it as:
+~~~
+docker run -t -p 8080:80 sgx
+~~~~
+This binds the server to the local port 8080.
+
+To keep the state of the enclave (i.e. its cryptographic state, so it can decrypt inputs), reuse the same container.
+
+# Tests
+
+There are 2 tests that can be run using CMake CTest.
+
+Do not forget to load the SGX env first.
+
+To run the tests,  go to the cmake build directory and:
+~~~
+ctest --verbose
+~~~
+
+
+# Todo
+Not use the enclave_private.pem in the git repo for signing the enclave and use the 2-step method for signing the enclave.
+
