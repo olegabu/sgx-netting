@@ -81,10 +81,13 @@ private:
     }
 
     void sgx_available(const Rest::Request& request, Http::ResponseWriter response){
+        printf("\n[sgx_available \n");
+
         response.send(Http::Code::Ok, "true", MIME(Application, Json)); // FIXME: assumes enclave init is a good enough test
     }
 
     void do_ec256_gen_key(const Rest::Request& request, Http::ResponseWriter response){
+		printf("\ndo_ec256_gen_key \n");
         sgx_ec256_private_t prv_key = {0};
         sgx_ec256_public_t  pub_key = {0};
         ec256_gen_key(&prv_key, &pub_key);
@@ -197,44 +200,50 @@ private:
         response.send(Http::Code::Ok, j.dump(2), MIME(Application, Star));
     }
 
-    void do_compress(const Rest::Request& request, Http::ResponseWriter response) {
-        json j = json::parse(request.body());
+	void do_compress(const Rest::Request& request, Http::ResponseWriter response) {
+		json j = json::parse(request.body());
 
-        json j_inputs = j["inputs"];
+		json j_inputs = j["inputs"];
 
-        assert(j_inputs.is_array());
-        vector<string> inputs;
-        for (int i = 0; i < j_inputs.size(); i++) {
-            inputs.push_back(base64_decode(j_inputs[i]));
-        }
+		assert(j_inputs.is_array());
+		vector<string> inputs;
+		for (int i = 0; i < j_inputs.size(); i++) {
+			inputs.push_back(base64_decode(j_inputs[i]));
+		}
 
-        buffer buf;
-        buf.put_i4(inputs.size());
-        for (int i = 0; i < inputs.size(); i++){
-            buf.write(inputs[i].data(), inputs[i].size());
-        }
-        uint8_t *out;
-        uint32_t out_size;
-        {
-            sgx_status_t ret, sret;
-            ret = compress_slv1_vector(
-                    G.enclave_id, &sret,
-                    buf.data(), buf.size(), &out, &out_size);
-        }
-        vector<string> parties;
-        vector<AES_GCM_msg> datas;
+		buffer buf;
+		buf.put_i4(inputs.size());
+		for (int i = 0; i < inputs.size(); i++) {
+			buf.write(inputs[i].data(), inputs[i].size());
+		}
+		uint8_t *out;
+		uint32_t out_size;
+		{
+			sgx_status_t ret, sret;
+			ret = compress_slv1_vector(
+				G.enclave_id, &sret,
+				buf.data(), buf.size(), &out, &out_size);
+			printf("Ret: %i\n", out_size);
+		}
+		vector<string> parties;
+		vector<AES_GCM_msg> datas;
 
-        buf = buffer();
-        buf.write(out, out_size);
+		buf = buffer();
+		buf.write(out, out_size);
 
-        buf >> parties;
-        buf >> datas;
+		buf >> parties;
+		buf >> datas;
 
-        json ret;
-        json j_p = json::array();
-        for(string& p : parties)
-            j_p.push_back(p);
+		json ret;
+		json j_p = json::array();
+		for (string& p : parties) {
+
+			printf("Output. party: %s", p);
+			j_p.push_back(p);
+		}
         ret["parties"] = j_p;
+
+
 
         json j_o = json::array();
         for(AES_GCM_msg& msg : datas){

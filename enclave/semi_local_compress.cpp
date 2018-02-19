@@ -15,7 +15,6 @@
 #include "SemiLocalAlgorithm.h"
 
 #include "crypto.h"
-
 sgx_status_t
 semi_local_compress(
         sgx_ec256_public_t* peer_key,
@@ -90,6 +89,8 @@ semi_local_compress(
 sgx_status_t compress_slv1_vector(
 uint8_t* in_inputs, uint32_t in_inputs_size,
 uint8_t** out_trades, uint32_t* out_trades_size) {
+
+
     try {
         if (g_state != INIT)
             return SGX_ERROR_INVALID_ENCLAVE;
@@ -120,7 +121,6 @@ uint8_t** out_trades, uint32_t* out_trades_size) {
             party_keys[p_id] = msg.peer_key;
 
             vector<ClearedTrade> trades = read_trades(data.read_ptr(), data.size());
-
             for (ClearedTrade &t : trades) {
                 all_trades.push_back(t);
             }
@@ -139,36 +139,61 @@ uint8_t** out_trades, uint32_t* out_trades_size) {
         vector<string> output_parties;
         vector<AES_GCM_msg> outputs;
 
+
         for (const party_id_t &p_id : newmat.members_set) {
+
+                       printf("Party: %s\n", p_id);
+
             vector<ClearedTrade> p_trades;
+            map<party_id_t, vector<ClearedTrade>> partyCounterparty_trades;
             for (ClearedTrade &t : newtrades) {
-                if (t.party == p_id || t.counter_party == p_id) {
+
+//                party_id_t counterParty = t.party == p_id ? t.counter_party : t.party;
+
+                if (t.party == p_id) {
                     p_trades.push_back(t);
+                    partyCounterparty_trades[t.counter_party].push_back(t);
                 }
             }
 
             if (p_trades.size() == 0)
                 continue;
 
-            buffer buf;
-            buf << p_id;
-            write_trades(p_trades, buf);
 
-            sgx_ec256_public_t* peer_key;
+            for (const auto pCpPair : partyCounterparty_trades) {
+                       printf("pCpPair: %s\n", pCpPair.first);
 
-            auto it = party_keys.find(p_id);
-            peer_key = (it != party_keys.end()) ? &it->second : 0;
+                vector<ClearedTrade> pairTrades=pCpPair.second;
+                for(const auto ptrade: pairTrades) {
+                   printf("\tTrade: %s-%s:%i\n", ptrade.party, ptrade.counter_party, ptrade.value);
+                }
 
-            // Skip party if we do not have a public key
-            if(peer_key == 0)
-                continue;
+				string partyPair = p_id + ":" + pCpPair.first;
 
-            ec256_dhkey_t sk_key = get_shared_dhkey(&g_data.key_trades, peer_key);
-            output_parties.push_back(p_id);
-            AES_GCM_msg msg = ec256_encrypt_msg(&g_data.pub_key_trades, &sk_key, buf);
-            outputs.push_back(msg);
+				buffer buf;
+				buf << p_id;
+				write_trades(pairTrades, buf);
+                sgx_ec256_public_t* peer_key;
+
+                auto it = party_keys.find(p_id);
+                peer_key = (it != party_keys.end()) ? &it->second : 0;
+
+                // Skip party if we do not have a public key
+                if(peer_key == 0)
+                    continue;
+
+            //    vector<string> pair_parties;
+            //    pair_parties.push_back(p_id);
+            //    pair_parties.push_back(pCpPair.first);
+
+                output_parties.push_back(partyPair);
+                ec256_dhkey_t sk_key = get_shared_dhkey(&g_data.key_trades, peer_key);
+                AES_GCM_msg msg = ec256_encrypt_msg(&g_data.pub_key_trades, &sk_key, buf);
+
+                outputs.push_back(msg);
+
+            }
         }
-
 
         buffer out_buf;
 
